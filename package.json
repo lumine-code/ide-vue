@@ -20,6 +20,9 @@
   "engines": {
     "lumine": "^1.0.0"
   },
+  "backgroundTips": [
+    "{{packageName}} runs a Vue-aware TypeScript bridge for project and component intelligence."
+  ],
   "main": "./lib/main",
   "files": [
     "lib",
