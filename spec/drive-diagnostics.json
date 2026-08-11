@@ -1,0 +1,18 @@
+{
+  "name": "ide-vue pull diagnostics matrix",
+  "adapter": "ide-vue",
+  "project": "fixtures/drive",
+  "file": "fixtures/drive/App.vue",
+  "grammarScope": "text.html.vue",
+  "checks": [
+    {
+      "name": "pull diagnostics",
+      "kind": "diagnostics",
+      "minLength": 1,
+      "expect": {
+        "path": "*.code",
+        "includes": "css-propertyvalueexpected"
+      }
+    }
+  ]
+}

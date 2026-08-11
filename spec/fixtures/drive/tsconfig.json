@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "types": ["vue/macros-global"],
+    "plugins": [{ "name": "@vue/typescript-plugin" }]
+  },
+  "include": ["**/*.ts", "**/*.vue"]
+}

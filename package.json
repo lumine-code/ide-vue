@@ -1,0 +1,471 @@
+{
+  "name": "ide-vue",
+  "author": "lumine-code",
+  "description": "Vue language-server adapter.",
+  "repository": "https://github.com/lumine-code/ide-vue",
+  "bugs": {
+    "url": "https://github.com/lumine-code/ide-vue/issues"
+  },
+  "keywords": [
+    "language-server",
+    "lsp",
+    "volar",
+    "sfc",
+    "components",
+    "composition-api",
+    "intellisense"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "lumine": "^1.0.0"
+  },
+  "main": "./lib/main",
+  "files": [
+    "lib",
+    "spec"
+  ],
+  "scripts": {
+    "test": "lumine --test spec",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "consumedServices": {
+    "ide-client": {
+      "versions": {
+        "^1.0.0": "consumeIdeClient"
+      }
+    }
+  },
+  "lem": {
+    "hold": {
+      "typescript": "pinned to the 5.x line because TypeScript 7 is the native rewrite and ships no tsserver.js for the Vue TypeScript bridge"
+    }
+  },
+  "dependencies": {
+    "@vue/language-server": "3.3.9",
+    "@vue/typescript-plugin": "3.3.9",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-n": "^18.2.2",
+    "globals": "^17.9.0",
+    "prettier": "^3.9.6",
+    "vue": "3.5.41",
+    "vscode-jsonrpc": "^9.0.1"
+  },
+  "configSchema": {
+    "serverPath": {
+      "title": "Server Path",
+      "description": "Absolute path to a `vue-language-server` executable. Leave empty to use the bundled server.",
+      "type": "string",
+      "default": ""
+    },
+    "tsdk": {
+      "title": "TypeScript SDK",
+      "description": "Path to a TypeScript `lib` directory. Leave empty to use the bundled compatible TypeScript SDK.",
+      "type": "string",
+      "default": ""
+    },
+    "features": {
+      "title": "Features",
+      "description": "Which parts of the Vue server the editor uses. Turning one off hands it to the next server serving the same file.",
+      "type": "object",
+      "properties": {
+        "diagnostics": {
+          "title": "Diagnostics",
+          "description": "Report Vue, template, script and style errors in the linter.",
+          "type": "boolean",
+          "default": true
+        },
+        "autocomplete": {
+          "title": "Autocomplete",
+          "description": "Offer components, props, directives, template expressions, script symbols and styles.",
+          "type": "boolean",
+          "default": true
+        },
+        "hover": {
+          "title": "Hover",
+          "description": "Show component, prop, directive, HTML, CSS and TypeScript information on hover.",
+          "type": "boolean",
+          "default": true
+        },
+        "definition": {
+          "title": "Go To Definition",
+          "description": "Jump to components, props, template variables, styles and script definitions.",
+          "type": "boolean",
+          "default": true
+        },
+        "references": {
+          "title": "Find References",
+          "description": "Find uses across Vue source files and their embedded languages.",
+          "type": "boolean",
+          "default": true
+        },
+        "symbols": {
+          "title": "Symbols",
+          "description": "Serve Vue document and project symbols to go-to-symbol.",
+          "type": "boolean",
+          "default": true
+        },
+        "outline": {
+          "title": "Outline",
+          "description": "Fill the outline panel with SFC blocks, declarations and template structure.",
+          "type": "boolean",
+          "default": true
+        },
+        "format": {
+          "title": "Format",
+          "description": "Format Vue files and their template, script and style blocks.",
+          "type": "boolean",
+          "default": true
+        },
+        "rename": {
+          "title": "Rename",
+          "description": "Rename components, props, template bindings, styles and script symbols.",
+          "type": "boolean",
+          "default": true
+        },
+        "codeActions": {
+          "title": "Code Actions",
+          "description": "Offer Vue and embedded-language fixes and refactorings.",
+          "type": "boolean",
+          "default": true
+        },
+        "inlayHints": {
+          "title": "Inlay Hints",
+          "description": "Show Vue macro, prop and TypeScript inference hints.",
+          "type": "boolean",
+          "default": true
+        },
+        "semanticTokens": {
+          "title": "Semantic Tokens",
+          "description": "Apply server-computed highlighting across SFC embedded languages.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "vue": {
+      "title": "Vue",
+      "description": "Vue-specific completion, hover, formatting, inlay hint and insertion behavior.",
+      "type": "object",
+      "properties": {
+        "suggest": {
+          "title": "Suggestions",
+          "description": "Naming and macro suggestions used in templates and scripts.",
+          "type": "object",
+          "properties": {
+            "componentNameCasing": {
+              "title": "Component Name Casing",
+              "description": "Casing used when inserting component tags.",
+              "type": "string",
+              "enum": [
+                "auto",
+                "preferKebabCase",
+                "preferPascalCase",
+                "alwaysKebabCase",
+                "alwaysPascalCase"
+              ],
+              "default": "auto"
+            },
+            "propNameCasing": {
+              "title": "Prop Name Casing",
+              "description": "Casing used when inserting component props.",
+              "type": "string",
+              "enum": [
+                "auto",
+                "preferKebabCase",
+                "preferCamelCase",
+                "alwaysKebabCase",
+                "alwaysCamelCase"
+              ],
+              "default": "auto"
+            },
+            "defineAssignment": {
+              "title": "Define Assignment",
+              "description": "Suggest assigning supported compiler macro calls to a variable.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "hover": {
+          "title": "Hover",
+          "description": "Vue-specific hover presentation.",
+          "type": "object",
+          "properties": {
+            "rich": {
+              "title": "Rich Hover",
+              "description": "Include expanded component and directive information in hover results.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "format": {
+          "title": "Formatting",
+          "description": "Formatting behavior for each SFC block.",
+          "type": "object",
+          "properties": {
+            "script": {
+              "title": "Script",
+              "description": "Script-block formatting behavior.",
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "Format script blocks.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "initialIndent": {
+                  "title": "Initial Indent",
+                  "description": "Indent script-block contents one level inside their tags.",
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            },
+            "style": {
+              "title": "Style",
+              "description": "Style-block formatting behavior.",
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "Format style blocks.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "initialIndent": {
+                  "title": "Initial Indent",
+                  "description": "Indent style-block contents one level inside their tags.",
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            },
+            "template": {
+              "title": "Template",
+              "description": "Template-block formatting behavior.",
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "Format template blocks.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "initialIndent": {
+                  "title": "Initial Indent",
+                  "description": "Indent template-block contents one level inside their tags.",
+                  "type": "boolean",
+                  "default": true
+                }
+              }
+            },
+            "wrapAttributes": {
+              "title": "Wrap Attributes",
+              "description": "How the formatter wraps multiple HTML and component attributes.",
+              "type": "string",
+              "enum": [
+                "auto",
+                "force",
+                "force-aligned",
+                "force-expand-multiline",
+                "aligned-multiple",
+                "preserve",
+                "preserve-aligned"
+              ],
+              "default": "auto"
+            }
+          }
+        },
+        "inlayHints": {
+          "title": "Inlay Hints",
+          "description": "Vue-specific hints shown when the shared inlay-hints feature is enabled.",
+          "type": "object",
+          "properties": {
+            "missingProps": {
+              "title": "Missing Props",
+              "description": "Hint at required component props not present on a tag.",
+              "type": "boolean",
+              "default": false
+            },
+            "destructuredProps": {
+              "title": "Destructured Props",
+              "description": "Show how destructured defineProps bindings map to the props object.",
+              "type": "boolean",
+              "default": false
+            },
+            "vBindShorthand": {
+              "title": "v-bind Shorthand",
+              "description": "Show the value inferred for a shorthand v-bind attribute.",
+              "type": "boolean",
+              "default": true
+            },
+            "optionsWrapper": {
+              "title": "Options Wrapper",
+              "description": "Show the generated wrapper around Options API component options.",
+              "type": "boolean",
+              "default": false
+            },
+            "inlineHandlerLeading": {
+              "title": "Inline Handler Leading Text",
+              "description": "Show generated leading text for inline template event handlers.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "autoInsert": {
+          "title": "Automatic Insertions",
+          "description": "Vue-specific automatic edits requested while typing.",
+          "type": "object",
+          "properties": {
+            "bracketSpacing": {
+              "title": "Bracket Spacing",
+              "description": "Insert spaces inside newly completed interpolation braces.",
+              "type": "boolean",
+              "default": true
+            },
+            "dotValue": {
+              "title": "Ref .value",
+              "description": "Insert .value for refs where the script context requires it.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      }
+    },
+    "typescript": {
+      "title": "TypeScript",
+      "description": "Completion, import and inlay-hint preferences shared by script blocks.",
+      "type": "object",
+      "properties": {
+        "suggest": {
+          "title": "Suggestions",
+          "description": "TypeScript completions offered in Vue scripts and expressions.",
+          "type": "object",
+          "properties": {
+            "autoImports": {
+              "title": "Auto Imports",
+              "description": "Offer symbols exported by other project modules.",
+              "type": "boolean",
+              "default": true
+            },
+            "completeFunctionCalls": {
+              "title": "Complete Function Calls",
+              "description": "Insert parentheses and snippet placeholders when accepting functions.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "preferences": {
+          "title": "Preferences",
+          "description": "How TypeScript writes inserted imports and code.",
+          "type": "object",
+          "properties": {
+            "quoteStyle": {
+              "title": "Quote Style",
+              "description": "Quotes used in inserted imports.",
+              "type": "string",
+              "enum": [
+                "auto",
+                "single",
+                "double"
+              ],
+              "default": "auto"
+            },
+            "importModuleSpecifier": {
+              "title": "Import Module Specifier",
+              "description": "Path style used for inserted imports.",
+              "type": "string",
+              "enum": [
+                "auto",
+                "relative",
+                "non-relative",
+                "project-relative"
+              ],
+              "default": "auto"
+            }
+          }
+        },
+        "inlayHints": {
+          "title": "Inlay Hints",
+          "description": "TypeScript inference hints shown in Vue scripts.",
+          "type": "object",
+          "properties": {
+            "parameterNames": {
+              "title": "Parameter Names",
+              "description": "Calls for which parameter-name hints are shown.",
+              "type": "string",
+              "enum": [
+                "none",
+                "literals",
+                "all"
+              ],
+              "default": "none"
+            },
+            "parameterTypes": {
+              "title": "Parameter Types",
+              "description": "Show inferred function parameter types.",
+              "type": "boolean",
+              "default": false
+            },
+            "variableTypes": {
+              "title": "Variable Types",
+              "description": "Show inferred variable types.",
+              "type": "boolean",
+              "default": false
+            },
+            "propertyDeclarationTypes": {
+              "title": "Property Types",
+              "description": "Show inferred class property types.",
+              "type": "boolean",
+              "default": false
+            },
+            "functionLikeReturnTypes": {
+              "title": "Return Types",
+              "description": "Show inferred function return types.",
+              "type": "boolean",
+              "default": false
+            },
+            "enumMemberValues": {
+              "title": "Enum Values",
+              "description": "Show computed enum member values.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "html": {
+      "title": "HTML",
+      "description": "Template completion behavior inherited from the HTML service.",
+      "type": "object",
+      "properties": {
+        "autoClosingTags": {
+          "title": "Auto-Closing Tags",
+          "description": "Insert matching closing tags in Vue templates.",
+          "type": "boolean",
+          "default": true
+        },
+        "autoCreateQuotes": {
+          "title": "Auto-Create Quotes",
+          "description": "Insert quotes for newly completed template attributes.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

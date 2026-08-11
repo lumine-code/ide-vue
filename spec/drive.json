@@ -1,0 +1,203 @@
+{
+  "name": "ide-vue full feature matrix",
+  "adapter": "ide-vue",
+  "project": "fixtures/drive",
+  "file": "fixtures/drive/Features.vue",
+  "grammarScope": "text.html.vue",
+  "config": {
+    "ide-vue.vue.inlayHints.missingProps": true
+  },
+  "checks": [
+    {
+      "name": "component completion",
+      "method": "textDocument/completion",
+      "position": [15, 5],
+      "params": { "context": { "triggerKind": 1 } },
+      "expect": { "path": "items.*.label", "includes": "ChildCard" }
+    },
+    {
+      "name": "completion resolve",
+      "method": "completionItem/resolve",
+      "document": false,
+      "paramsFrom": {
+        "$": {
+          "check": "component completion",
+          "path": "items",
+          "find": { "path": "label", "equals": "ChildCard" }
+        }
+      },
+      "expect": { "path": "label", "equals": "ChildCard" }
+    },
+    {
+      "name": "component prop completion",
+      "method": "textDocument/completion",
+      "position": [15, 15],
+      "params": { "context": { "triggerKind": 1 } },
+      "expect": { "path": "items.*.label", "includes": ":count" }
+    },
+    {
+      "name": "hover",
+      "method": "textDocument/hover",
+      "position": [22, 27],
+      "expect": { "path": "contents.value", "matches": "color" }
+    },
+    {
+      "name": "document symbols",
+      "method": "textDocument/documentSymbol",
+      "expect": { "path": "*.name", "includes": "template" }
+    },
+    {
+      "name": "document highlights",
+      "method": "textDocument/documentHighlight",
+      "position": [4, 7],
+      "expect": { "type": "array", "minLength": 3 }
+    },
+    {
+      "name": "definition location link",
+      "method": "textDocument/definition",
+      "position": [22, 37],
+      "expect": {
+        "path": "*.targetSelectionRange.start.character",
+        "includes": 8
+      }
+    },
+    {
+      "name": "references",
+      "method": "textDocument/references",
+      "position": [22, 10],
+      "params": { "context": { "includeDeclaration": true } },
+      "expect": { "path": "*.uri", "minLength": 2, "matches": "Features\\.vue" }
+    },
+    {
+      "name": "prepare rename",
+      "method": "textDocument/prepareRename",
+      "position": [22, 10],
+      "expect": { "path": "start.character", "equals": 8 }
+    },
+    {
+      "name": "rename",
+      "method": "textDocument/rename",
+      "position": [22, 10],
+      "params": { "newName": "--selected" },
+      "expect": { "path": "changes", "type": "object", "minLength": 1 }
+    },
+    {
+      "name": "formatting",
+      "method": "textDocument/formatting",
+      "params": { "options": { "tabSize": 2, "insertSpaces": true } },
+      "expect": { "type": "array", "minLength": 1 }
+    },
+    {
+      "name": "range formatting",
+      "method": "textDocument/rangeFormatting",
+      "params": {
+        "range": {
+          "start": { "line": 21, "character": 0 },
+          "end": { "line": 23, "character": 0 }
+        },
+        "options": { "tabSize": 2, "insertSpaces": true }
+      },
+      "expect": { "type": "array", "minLength": 1 }
+    },
+    {
+      "name": "on-type formatting",
+      "method": "textDocument/onTypeFormatting",
+      "position": [9, 22],
+      "params": {
+        "ch": ";",
+        "options": { "tabSize": 2, "insertSpaces": true }
+      },
+      "expect": { "type": "null" }
+    },
+    {
+      "name": "code actions",
+      "method": "textDocument/codeAction",
+      "params": {
+        "range": {
+          "start": { "line": 15, "character": 4 },
+          "end": { "line": 15, "character": 61 }
+        },
+        "context": { "diagnostics": [], "only": ["refactor"] }
+      },
+      "expect": {
+        "path": "*.title",
+        "includes": "Extract into new dumb component"
+      }
+    },
+    {
+      "name": "code action resolve",
+      "method": "codeAction/resolve",
+      "document": false,
+      "paramsFrom": {
+        "$": {
+          "check": "code actions",
+          "path": "$",
+          "find": {
+            "path": "title",
+            "equals": "Extract into new dumb component"
+          }
+        }
+      },
+      "expect": { "path": "edit.documentChanges", "type": "array", "minLength": 2 }
+    },
+    {
+      "name": "inlay hints",
+      "method": "textDocument/inlayHint",
+      "params": {
+        "range": {
+          "start": { "line": 0, "character": 0 },
+          "end": { "line": 23, "character": 0 }
+        }
+      },
+      "expect": { "type": "array", "minLength": 1 }
+    },
+    {
+      "name": "semantic tokens",
+      "method": "textDocument/semanticTokens/full",
+      "expect": { "path": "data", "type": "array", "minLength": 50 }
+    },
+    {
+      "name": "semantic token range",
+      "method": "textDocument/semanticTokens/range",
+      "params": {
+        "range": {
+          "start": { "line": 13, "character": 0 },
+          "end": { "line": 19, "character": 0 }
+        }
+      },
+      "expect": { "path": "data", "type": "array", "minLength": 5 }
+    },
+    {
+      "name": "selection ranges",
+      "method": "textDocument/selectionRange",
+      "params": { "positions": [{ "line": 15, "character": 7 }] },
+      "expect": { "path": "0.parent.parent", "type": "object" }
+    },
+    {
+      "name": "folding ranges",
+      "method": "textDocument/foldingRange",
+      "expect": { "type": "array", "minLength": 6 }
+    },
+    {
+      "name": "linked editing ranges",
+      "method": "textDocument/linkedEditingRange",
+      "position": [14, 4],
+      "expect": { "path": "ranges", "type": "array", "minLength": 2 }
+    },
+    {
+      "name": "document links",
+      "method": "textDocument/documentLink",
+      "expect": { "path": "*.target", "matches": "Features\\.vue#L23" }
+    },
+    {
+      "name": "document colors",
+      "method": "textDocument/documentColor",
+      "expect": { "type": "array", "minLength": 1 }
+    },
+    {
+      "name": "restart lifecycle",
+      "kind": "restart",
+      "expect": { "path": "current", "equals": "running" }
+    }
+  ]
+}
