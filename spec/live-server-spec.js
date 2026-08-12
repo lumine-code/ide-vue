@@ -2,7 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const { fileURLToPath } = require("url");
 const main = require("../lib/main");
-const { LiveLspClient, fileUri, position, positionParams } = require("./helpers/live-lsp-client");
+const {
+  LiveLspClient,
+  fileUri,
+  position,
+  positionParams,
+  replaceOnce,
+} = require("./helpers/live-lsp-client");
 
 const registerAdapter = () => {
   let adapter;
@@ -233,7 +239,7 @@ describe("ide-vue bundled server", () => {
     await client.start();
     client.open(uri, "vue", source);
 
-    const fixed = source.replace(".broken { color: ; }\n", "");
+    const fixed = replaceOnce(source, ".broken { color: ; }\n");
     client.change(uri, fixed);
     const formatting = await client.request("textDocument/formatting", {
       textDocument: { uri },
@@ -287,7 +293,7 @@ describe("ide-vue bundled server", () => {
       (await client.request("textDocument/diagnostic", { textDocument: { uri } })).items.length,
     ).toBe(1);
 
-    const fixed = source.replace(".broken { color: ; }\n", "");
+    const fixed = replaceOnce(source, ".broken { color: ; }\n");
     client.change(uri, fixed, 2);
     expect(
       (await client.request("textDocument/diagnostic", { textDocument: { uri } })).items,
