@@ -7,6 +7,7 @@ Registers the bundled Vue Language Server with `ide-client`, providing diagnosti
 ## Features
 
 - **Bundled server**: pins `@vue/language-server` exactly, with optional custom server and TypeScript SDK paths.
+- **Managed upgrade**: installs a newer server from npm when you want one, and removing it returns to the bundled copy.
 - **Vue TypeScript bridge**: runs the matching `@vue/typescript-plugin` in a companion tsserver and answers the server's custom `tsserver/request` notifications, enabling project and component intelligence outside VS Code.
 - **Whole-SFC intelligence**: serves Vue templates together with their TypeScript, JavaScript, HTML, CSS, SCSS, and Less blocks.
 - **Navigation and structure**: follows components, props, bindings, styles, and script symbols and supplies references and document symbols.
