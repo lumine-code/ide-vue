@@ -17,11 +17,11 @@ Registers the bundled Vue Language Server with `ide-client`, providing diagnosti
 
 ## Installation
 
-To install `ide-vue`, search for _ide-vue_ in the Install pane of the Lumine settings or run `lumine --install lumine-code/ide-vue`.
+To install `ide-vue` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/ide-vue`.
 
 ## Services
 
-- **ide-client** (`^1.0.0`): consumed to register the Vue adapter with the editor's language-server client.
+- `ide-client`: consumed to register the Vue adapter with the editor's language-server client.
 
 ## Contributing
 
