@@ -42,9 +42,9 @@
     }
   },
   "dependencies": {
-    "@vue/language-server": "3.3.9",
-    "@vue/typescript-plugin": "3.3.9",
-    "typescript": "5.9.3"
+    "@vue/language-server": "3.3.11",
+    "@vue/typescript-plugin": "3.3.11",
+    "typescript": "6.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

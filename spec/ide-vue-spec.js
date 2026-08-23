@@ -51,9 +51,9 @@ describe("ide-vue server resolution", () => {
     expect(path.basename(launch.args[0])).toBe("vue-language-server.js");
     expect(fs.existsSync(launch.args[0])).toBe(true);
     expect(launch.env.ELECTRON_RUN_AS_NODE).toBe("1");
-    expect(require("@vue/language-server/package.json").version).toBe("3.3.9");
-    expect(require("@vue/typescript-plugin/package.json").version).toBe("3.3.9");
-    expect(require("typescript/package.json").version).toBe("5.9.3");
+    expect(require("@vue/language-server/package.json").version).toBe("3.3.11");
+    expect(require("@vue/typescript-plugin/package.json").version).toBe("3.3.11");
+    expect(require("typescript/package.json").version).toBe("6.0.3");
   });
 
   it("rejects missing custom executables and TypeScript SDKs", async () => {
@@ -314,9 +314,9 @@ describe("ide-vue package assets", () => {
 
   it("pins all bridge runtime dependencies exactly", () => {
     expect(pkg.dependencies).toEqual({
-      "@vue/language-server": "3.3.9",
-      "@vue/typescript-plugin": "3.3.9",
-      typescript: "5.9.3",
+      "@vue/language-server": "3.3.11",
+      "@vue/typescript-plugin": "3.3.11",
+      typescript: "6.0.3",
     });
     for (const version of Object.values(pkg.dependencies))
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
