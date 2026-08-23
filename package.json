@@ -41,11 +41,6 @@
       }
     }
   },
-  "lem": {
-    "hold": {
-      "typescript": "pinned to the 5.x line because TypeScript 7 is the native rewrite and ships no tsserver.js for the Vue TypeScript bridge"
-    }
-  },
   "dependencies": {
     "@vue/language-server": "3.3.9",
     "@vue/typescript-plugin": "3.3.9",
