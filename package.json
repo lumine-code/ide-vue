@@ -72,77 +72,90 @@
     "features": {
       "title": "Features",
       "description": "Which parts of the Vue server the editor uses. Turning one off hands it to the next server serving the same file.",
+      "scopeResolution": "grammar",
       "type": "object",
       "properties": {
         "diagnostics": {
           "title": "Diagnostics",
           "description": "Report Vue, template, script and style errors in the linter.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "autocomplete": {
           "title": "Autocomplete",
           "description": "Offer components, props, directives, template expressions, script symbols and styles.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "hover": {
           "title": "Hover",
           "description": "Show component, prop, directive, HTML, CSS and TypeScript information on hover.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "definition": {
           "title": "Go To Definition",
           "description": "Jump to components, props, template variables, styles and script definitions.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "references": {
           "title": "Find References",
           "description": "Find uses across Vue source files and their embedded languages.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "symbols": {
           "title": "Symbols",
           "description": "Serve Vue document and project symbols to go-to-symbol.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "outline": {
           "title": "Outline",
           "description": "Fill the outline panel with SFC blocks, declarations and template structure.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "format": {
           "title": "Format",
           "description": "Format Vue files and their template, script and style blocks.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "rename": {
           "title": "Rename",
           "description": "Rename components, props, template bindings, styles and script symbols.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "codeActions": {
           "title": "Code Actions",
           "description": "Offer Vue and embedded-language fixes and refactorings.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "inlayHints": {
           "title": "Inlay Hints",
           "description": "Show Vue macro, prop and TypeScript inference hints.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         },
         "semanticTokens": {
           "title": "Semantic Tokens",
           "description": "Apply server-computed highlighting across SFC embedded languages.",
+          "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
         }
