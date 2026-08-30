@@ -11,7 +11,6 @@ const FEATURES = [
   "definition",
   "references",
   "symbols",
-  "outline",
   "format",
   "rename",
   "codeActions",

@@ -112,14 +112,7 @@
         },
         "symbols": {
           "title": "Symbols",
-          "description": "Serve Vue document and project symbols to go-to-symbol.",
-          "scopeResolution": "grammar",
-          "type": "boolean",
-          "default": true
-        },
-        "outline": {
-          "title": "Outline",
-          "description": "Fill the outline panel with SFC blocks, declarations and template structure.",
+          "description": "Serve Vue document and project symbols to navigation features.",
           "scopeResolution": "grammar",
           "type": "boolean",
           "default": true
