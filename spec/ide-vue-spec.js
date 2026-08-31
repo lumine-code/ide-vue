@@ -1,3 +1,5 @@
+const childProcess = require("child_process");
+const { EventEmitter } = require("events");
 const fs = require("fs");
 const path = require("path");
 const main = require("../lib/main");
@@ -106,8 +108,85 @@ describe("ide-vue TypeScript bridge primitives", () => {
       expect(updated).toContain("count");
       expect(bridge.openFiles.get(file)).toBe(text);
     } finally {
-      bridge.stop();
+      await bridge.stop();
     }
+  });
+
+  it("coalesces stop, rejects pending requests and kills an unresponsive process", async () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.stdin = { write: jasmine.createSpy("write") };
+    child.kill = jasmine.createSpy("kill").and.callFake((signal) => {
+      expect(signal).toBe("SIGKILL");
+      queueMicrotask(() => child.emit("exit", null, signal));
+      return true;
+    });
+    spyOn(childProcess, "spawn").and.returnValue(child);
+    let forceStop;
+    const timer = { unref: jasmine.createSpy("unref") };
+    const timers = {
+      setTimeout(callback, delay) {
+        expect(delay).toBe(1000);
+        forceStop = callback;
+        return timer;
+      },
+      clearTimeout: jasmine.createSpy("clearTimeout"),
+    };
+    const bridge = new TsServerBridge({
+      rootPath: __dirname,
+      tsdk: bundledTsdk(),
+      textForFile: () => undefined,
+      timers,
+    });
+    const pending = bridge.request("_vue:projectInfo", {});
+    const rejected = expectAsync(pending).toBeRejectedWithError("Vue tsserver bridge stopped");
+
+    const first = bridge.stop();
+    const second = bridge.stop();
+
+    expect(second).toBe(first);
+    await rejected;
+    expect(JSON.parse(child.stdin.write.calls.mostRecent().args[0]).command).toBe("exit");
+    expect(timer.unref).toHaveBeenCalledTimes(1);
+    forceStop();
+    await first;
+    expect(child.kill).toHaveBeenCalledTimes(1);
+    expect(timers.clearTimeout).toHaveBeenCalledOnceWith(timer);
+    expect(() => bridge.request("_vue:projectInfo", {})).toThrowError(
+      "Vue tsserver bridge is stopped",
+    );
+  });
+
+  it("does not report a stopped bridge when the hard kill cannot be sent", async () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.stdin = { write() {} };
+    child.kill = jasmine.createSpy("kill").and.returnValue(false);
+    spyOn(childProcess, "spawn").and.returnValue(child);
+    let forceStop;
+    const timers = {
+      setTimeout(callback) {
+        forceStop = callback;
+        return {};
+      },
+      clearTimeout() {},
+    };
+    const bridge = new TsServerBridge({
+      rootPath: __dirname,
+      tsdk: bundledTsdk(),
+      textForFile: () => undefined,
+      timers,
+    });
+    bridge.request("_vue:projectInfo", {}).catch(() => {});
+    const stopping = bridge.stop();
+
+    forceStop();
+
+    await expectAsync(stopping).toBeRejectedWithError("Unable to kill Vue tsserver bridge");
+    expect(bridge.stopped).toBe(false);
+    expect(bridge.child).toBe(child);
   });
 });
 
@@ -116,12 +195,14 @@ describe("ide-vue adapter", () => {
   let disposable;
 
   beforeEach(async () => {
+    lumine.config.unset("ide-vue.tsdk");
     await lumine.packages.activatePackage("ide-vue");
     ({ adapter, disposable } = registerAdapter());
   });
 
   afterEach(async () => {
     disposable.dispose();
+    lumine.config.unset("ide-vue.tsdk");
     await lumine.packages.deactivatePackage("ide-vue");
   });
 
@@ -132,9 +213,11 @@ describe("ide-vue adapter", () => {
     expect(adapter.languageId).toBe("vue");
     expect(adapter.sessionScope).toBe("project-root");
     expect(adapter.settingsKeyPaths).toEqual(["ide-vue"]);
+    expect(adapter.restartKeyPaths).toEqual(["ide-vue.serverPath", "ide-vue.tsdk"]);
     const launch = await adapter.resolveServer({ rootPath: __dirname });
     expect(launch.cwd).toBe(__dirname);
     expect(launch.transport).toBe("stdio");
+    expect(launch.tsdk).toBe(bundledTsdk());
   });
 
   it("answers whole, top-level and deeply nested configuration sections", () => {
@@ -181,10 +264,16 @@ describe("ide-vue adapter", () => {
   });
 
   it("bridges Volar's nonstandard tsserver request and response notifications", async () => {
-    spyOn(TsServerBridge.prototype, "request").and.returnValue(Promise.resolve(["ChildCard"]));
-    spyOn(TsServerBridge.prototype, "stop");
+    let bridgeTsdk;
+    spyOn(TsServerBridge.prototype, "request").and.callFake(function () {
+      bridgeTsdk = this.tsdk;
+      return Promise.resolve(["ChildCard"]);
+    });
+    spyOn(TsServerBridge.prototype, "kill");
+    lumine.config.set("ide-vue.tsdk", "C:\\invalid-new-tsdk");
     const session = {
       rootPath: __dirname,
+      launch: { tsdk: bundledTsdk() },
       notify: jasmine.createSpy("notify"),
     };
     await adapter.handleServerNotification(
@@ -195,11 +284,13 @@ describe("ide-vue adapter", () => {
     expect(TsServerBridge.prototype.request).toHaveBeenCalledOnceWith("_vue:getComponentNames", [
       "App.vue",
     ]);
+    expect(bridgeTsdk).toBe(session.launch.tsdk);
     expect(session.notify).toHaveBeenCalledOnceWith("tsserver/response", [17, ["ChildCard"]]);
     await adapter.handleServerNotification("window/logMessage", {}, { session });
     expect(session.notify).toHaveBeenCalledTimes(1);
+    lumine.config.unset("ide-vue.tsdk");
     disposable.dispose();
-    expect(TsServerBridge.prototype.stop).toHaveBeenCalledTimes(1);
+    expect(TsServerBridge.prototype.kill).toHaveBeenCalledTimes(1);
   });
 
   it("reports one bridge failure while still answering every server request", async () => {
@@ -209,6 +300,7 @@ describe("ide-vue adapter", () => {
     spyOn(lumine.notifications, "addError");
     const session = {
       rootPath: __dirname,
+      launch: { tsdk: bundledTsdk() },
       notify: jasmine.createSpy("notify"),
     };
     await adapter.handleServerNotification("tsserver/request", [1, "first", { file: "App.vue" }], {
@@ -235,8 +327,13 @@ describe("ide-vue adapter", () => {
       },
     }));
     spyOn(TsServerBridge.prototype, "request").and.returnValue(Promise.resolve({}));
-    spyOn(TsServerBridge.prototype, "stop");
-    const session = { adapter, rootPath: __dirname, notify() {} };
+    spyOn(TsServerBridge.prototype, "stop").and.returnValue(Promise.resolve());
+    const session = {
+      adapter,
+      rootPath: __dirname,
+      launch: { tsdk: bundledTsdk() },
+      notify() {},
+    };
     await adapter.handleServerNotification(
       "tsserver/request",
       [1, "_vue:projectInfo", { file: "App.vue" }],
@@ -246,21 +343,56 @@ describe("ide-vue adapter", () => {
     expect(TsServerBridge.prototype.stop).toHaveBeenCalledOnceWith();
   });
 
-  it("restarts active sessions after either launch path changes", async () => {
+  it("does not create a companion process for a session that is stopping", async () => {
+    spyOn(TsServerBridge.prototype, "request");
+    const session = {
+      rootPath: __dirname,
+      state: "stopping",
+      notify: jasmine.createSpy("notify"),
+    };
+    await adapter.handleServerNotification(
+      "tsserver/request",
+      [1, "_vue:projectInfo", { file: "App.vue" }],
+      { session },
+    );
+    expect(TsServerBridge.prototype.request).not.toHaveBeenCalled();
+    expect(session.notify).not.toHaveBeenCalled();
+  });
+
+  it("does not answer a bridge request after its session starts stopping", async () => {
     disposable.dispose();
-    const active = { adapter: null, state: "running" };
-    const stopped = { adapter: null, state: "stopped" };
-    const restart = jasmine.createSpy("restart").and.returnValue(Promise.resolve());
+    let changeSession;
     ({ adapter, disposable } = registerAdapter({
-      getSessions: () => [active, stopped],
-      restart,
+      onDidChangeSession(callback) {
+        changeSession = callback;
+        return { dispose() {} };
+      },
     }));
-    active.adapter = adapter;
-    stopped.adapter = adapter;
-    lumine.config.set("ide-vue.serverPath", process.execPath);
-    lumine.config.set("ide-vue.tsdk", bundledTsdk());
-    await Promise.resolve();
-    expect(restart.calls.allArgs()).toEqual([[active], [active]]);
+    let resolveRequest;
+    spyOn(TsServerBridge.prototype, "request").and.returnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+    spyOn(TsServerBridge.prototype, "stop").and.returnValue(Promise.resolve());
+    const session = {
+      adapter,
+      rootPath: __dirname,
+      launch: { tsdk: bundledTsdk() },
+      state: "running",
+      notify: jasmine.createSpy("notify"),
+    };
+    const handling = adapter.handleServerNotification(
+      "tsserver/request",
+      [1, "_vue:projectInfo", { file: "App.vue" }],
+      { session },
+    );
+    session.state = "stopping";
+    changeSession({ session, state: "stopping" });
+    resolveRequest({ configFileName: "tsconfig.json" });
+    await handling;
+    expect(TsServerBridge.prototype.stop).toHaveBeenCalledTimes(1);
+    expect(session.notify).not.toHaveBeenCalled();
   });
 });
 

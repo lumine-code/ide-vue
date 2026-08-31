@@ -157,6 +157,7 @@ class LiveLspClient {
 
   async start() {
     const launch = await this.adapter.resolveServer({ rootPath: this.rootPath });
+    this.launch = launch;
     this.child = childProcess.spawn(launch.command, launch.args || [], {
       cwd: launch.cwd || this.rootPath,
       env: { ...process.env, ...(launch.env || {}) },
@@ -182,6 +183,7 @@ class LiveLspClient {
     this.session = {
       adapter: this.adapter,
       rootPath: this.rootPath,
+      launch,
       state: "running",
       notify: (method, params) => this.connection.sendNotification(method, params),
     };
