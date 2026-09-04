@@ -3,7 +3,14 @@ const { EventEmitter } = require("events");
 const fs = require("fs");
 const path = require("path");
 const main = require("../lib/main");
-const { bundledTsdk, resolveServer, resolveTsdk } = require("../lib/server");
+const {
+  bundledPluginProbeLocation,
+  bundledTsdk,
+  managedServer,
+  pluginProbeLocation,
+  resolveServer,
+  resolveTsdk,
+} = require("../lib/server");
 const { TsServerBridge, endLocation, requestFile } = require("../lib/tsserver-bridge");
 
 const FEATURES = [
@@ -41,6 +48,7 @@ describe("ide-vue server resolution", () => {
     expect(launch).toEqual({
       command: process.execPath,
       args: ["--stdio", `--tsdk=${bundledTsdk()}`],
+      pluginProbeLocation: bundledPluginProbeLocation(),
     });
   });
 
@@ -52,9 +60,20 @@ describe("ide-vue server resolution", () => {
     expect(path.basename(launch.args[0])).toBe("vue-language-server.js");
     expect(fs.existsSync(launch.args[0])).toBe(true);
     expect(launch.env.ELECTRON_RUN_AS_NODE).toBe("1");
+    expect(launch.pluginProbeLocation).toBe(bundledPluginProbeLocation());
     expect(require("@vue/language-server/package.json").version).toBe("3.3.11");
     expect(require("@vue/typescript-plugin/package.json").version).toBe("3.3.11");
     expect(require("typescript/package.json").version).toBe("6.0.3");
+  });
+
+  it("keeps the managed compiler below TypeScript 7 and probes its matching Vue plugin", () => {
+    const directory = path.join("managed", "ide-vue");
+    expect(managedServer.packages).toEqual([
+      "@vue/language-server",
+      { name: "typescript", version: "^6.0.3" },
+    ]);
+    expect(pluginProbeLocation("", { directory })).toBe(path.join(directory, "node_modules"));
+    expect(pluginProbeLocation(process.execPath, { directory })).toBe(bundledPluginProbeLocation());
   });
 
   it("rejects missing custom executables and TypeScript SDKs", async () => {
@@ -133,9 +152,11 @@ describe("ide-vue TypeScript bridge primitives", () => {
       },
       clearTimeout: jasmine.createSpy("clearTimeout"),
     };
+    const managedProbe = path.join(__dirname, "managed", "node_modules");
     const bridge = new TsServerBridge({
       rootPath: __dirname,
       tsdk: bundledTsdk(),
+      pluginProbeLocation: managedProbe,
       textForFile: () => undefined,
       timers,
     });
@@ -146,6 +167,8 @@ describe("ide-vue TypeScript bridge primitives", () => {
     const second = bridge.stop();
 
     expect(second).toBe(first);
+    const spawnArgs = childProcess.spawn.calls.mostRecent().args[1];
+    expect(spawnArgs[spawnArgs.indexOf("--pluginProbeLocations") + 1]).toBe(managedProbe);
     await rejected;
     expect(JSON.parse(child.stdin.write.calls.mostRecent().args[0]).command).toBe("exit");
     expect(timer.unref).toHaveBeenCalledTimes(1);
@@ -261,6 +284,18 @@ describe("ide-vue adapter", () => {
     expect(all.css).toEqual({ validate: false, format: { enable: false } });
     expect(all.scss).toEqual(all.css);
     expect(all.less).toEqual(all.css);
+  });
+
+  it("uses the Vue grammar override when server-side feature settings are built", () => {
+    lumine.config.set("ide-vue.features.diagnostics", false);
+    lumine.config.set("ide-vue.features.diagnostics", true, {
+      scopeSelector: ".text.html.vue",
+    });
+    expect(adapter.getSettings().typescript.validate.enable).toBe(true);
+    expect(adapter.getSettings().html.validate).toBe(true);
+    lumine.config.unset("ide-vue.features.diagnostics", {
+      scopeSelector: ".text.html.vue",
+    });
   });
 
   it("bridges Volar's nonstandard tsserver request and response notifications", async () => {
@@ -451,6 +486,22 @@ describe("ide-vue package assets", () => {
     });
     for (const version of Object.values(pkg.dependencies))
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it("matches Windows paths after the server canonicalizes the drive", () => {
+    expect(main.pathKey("C:\\Project\\App.vue", "win32")).toBe(
+      main.pathKey("c:/Project/App.vue", "win32"),
+    );
+    expect(main.pathKey("/Project/App.vue", "linux")).not.toBe(
+      main.pathKey("/Project/app.vue", "linux"),
+    );
+    spyOn(lumine.workspace, "getTextEditors").and.returnValue([
+      {
+        getPath: () => "C:\\Project\\App.vue",
+        getText: () => "unsaved Vue source",
+      },
+    ]);
+    expect(main.textForOpenFile("c:/Project/App.vue", "win32")).toBe("unsaved Vue source");
   });
 
   it("declares every setting read by the adapter", () => {
