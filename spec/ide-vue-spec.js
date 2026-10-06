@@ -1,3 +1,4 @@
+const { serverContext } = require("./helpers/server-context");
 const childProcess = require("child_process");
 const { EventEmitter } = require("events");
 const fs = require("fs");
@@ -7,10 +8,15 @@ const {
   bundledPluginProbeLocation,
   bundledTsdk,
   managedServer,
-  pluginProbeLocation,
-  resolveServer,
-  resolveTsdk,
+  resolveServer: resolveServerWithContext,
 } = require("../lib/server");
+const resolveServer = (configuredPath, tsdk, managedServer = null) =>
+  resolveServerWithContext(
+    serverContext({ rootPath: __dirname, managedServer }),
+    configuredPath,
+    tsdk,
+  );
+
 const { TsServerBridge, endLocation, requestFile } = require("../lib/tsserver-bridge");
 
 const FEATURES = [
@@ -45,15 +51,17 @@ const registerAdapter = (overrides = {}) => {
 describe("ide-vue server resolution", () => {
   it("uses the configured executable and TypeScript SDK with stdio", async () => {
     const launch = await resolveServer(process.execPath, bundledTsdk());
-    expect(launch).toEqual({
-      command: process.execPath,
-      args: ["--stdio", `--tsdk=${bundledTsdk()}`],
-      pluginProbeLocation: bundledPluginProbeLocation(),
-    });
+    expect(launch).toEqual(
+      jasmine.objectContaining({
+        command: process.execPath,
+        args: ["--stdio", `--tsdk=${bundledTsdk()}`],
+        pluginProbeLocation: bundledPluginProbeLocation(),
+      }),
+    );
   });
 
   it("launches the exact bundled server through Electron's Node runtime", async () => {
-    const tsdk = resolveTsdk("");
+    const tsdk = bundledTsdk();
     const launch = await resolveServer("", tsdk);
     expect(launch.command).toBe(process.execPath);
     expect(launch.args.slice(1)).toEqual(["--stdio", `--tsdk=${tsdk}`]);
@@ -66,14 +74,11 @@ describe("ide-vue server resolution", () => {
     expect(require("typescript/package.json").version).toBe("6.0.3");
   });
 
-  it("keeps the managed compiler below TypeScript 7 and probes its matching Vue plugin", () => {
-    const directory = path.join("managed", "ide-vue");
+  it("keeps the managed compiler below TypeScript 7", () => {
     expect(managedServer.packages).toEqual([
       "@vue/language-server",
       { name: "typescript", version: "^6.0.3" },
     ]);
-    expect(pluginProbeLocation("", { directory })).toBe(path.join(directory, "node_modules"));
-    expect(pluginProbeLocation(process.execPath, { directory })).toBe(bundledPluginProbeLocation());
   });
 
   it("rejects missing custom executables and TypeScript SDKs", async () => {
@@ -81,6 +86,27 @@ describe("ide-vue server resolution", () => {
     await expectAsync(
       resolveServer(path.join(__dirname, "missing-server"), bundledTsdk()),
     ).toBeRejected();
+  });
+
+  it("keeps configured servers independent of a broken managed toolchain", async () => {
+    const managed = {
+      directory: path.join(__dirname, "missing-managed"),
+      modulePath: path.join(__dirname, "missing-managed", "server.js"),
+      version: "9.9.9",
+    };
+    const launch = await resolveServer(process.execPath, "", managed);
+    expect(launch.tsdk).toBe(bundledTsdk());
+    expect(launch.pluginProbeLocation).toBe(bundledPluginProbeLocation());
+    expect(launch.version).toBeUndefined();
+  });
+
+  it("rejects an incomplete managed compiler instead of mixing generations", async () => {
+    const managed = {
+      directory: path.join(__dirname, "missing-managed"),
+      modulePath: require.resolve("@vue/language-server/bin/vue-language-server.js"),
+      version: "9.9.9",
+    };
+    await expectAsync(resolveServer("", "", managed)).toBeRejectedWithError(/TypeScript SDK/);
   });
 });
 
@@ -237,7 +263,7 @@ describe("ide-vue adapter", () => {
     expect(adapter.sessionScope).toBe("project-root");
     expect(adapter.settingsKeyPaths).toEqual(["ide-vue"]);
     expect(adapter.restartKeyPaths).toEqual(["ide-vue.serverPath", "ide-vue.tsdk"]);
-    const launch = await adapter.resolveServer({ rootPath: __dirname });
+    const launch = await adapter.resolveServer(serverContext({ rootPath: __dirname }));
     expect(launch.cwd).toBe(__dirname);
     expect(launch.transport).toBe("stdio");
     expect(launch.tsdk).toBe(bundledTsdk());
@@ -522,5 +548,13 @@ describe("ide-vue package assets", () => {
     expect(readme).toContain("@vue/typescript-plugin");
     for (const file of ["README.md", "package.json", "lib/main.js"])
       expect(read(file)).not.toMatch(/require\(["']atom["']\)|\bPulsar\b|atom-ide\//);
+  });
+});
+
+describe("ide-vue shared server resolution", () => {
+  it("preserves an unavailable selection as null", async () => {
+    const { resolveServer: resolveWithContext } = require("../lib/server");
+    const resolver = { select: jasmine.createSpy("select").and.resolveTo(null) };
+    expect(await resolveWithContext({ rootPath: __dirname, resolver }, "")).toBeNull();
   });
 });

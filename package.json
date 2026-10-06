@@ -66,13 +66,13 @@
   "configSchema": {
     "serverPath": {
       "title": "Server Path",
-      "description": "Absolute path to a `vue-language-server` executable. Leave empty to use the bundled server.",
+      "description": "Absolute path to a server executable or JavaScript entry. Leave empty to use the installed server, or the bundled copy.",
       "type": "string",
       "default": ""
     },
     "tsdk": {
       "title": "TypeScript SDK",
-      "description": "Path to a TypeScript `lib` directory. Leave empty to use the bundled compatible TypeScript SDK.",
+      "description": "Absolute path to a TypeScript `lib` directory. Leave empty to use the selected managed server's SDK, or the bundled compatible SDK.",
       "type": "string",
       "default": ""
     },
