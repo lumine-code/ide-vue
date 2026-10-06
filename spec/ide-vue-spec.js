@@ -243,19 +243,17 @@ describe("ide-vue adapter", () => {
     expect(launch.tsdk).toBe(bundledTsdk());
   });
 
-  it("answers whole, top-level and deeply nested configuration sections", () => {
+  it("keeps nested Vue settings and matching TypeScript namespaces in one tree", () => {
     lumine.config.set("ide-vue.vue.format.template.initialIndent", false);
     lumine.config.set("ide-vue.typescript.preferences.quoteStyle", "single");
     const all = adapter.getSettings();
-    expect(adapter.getWorkspaceConfiguration()).toEqual(all);
-    expect(adapter.getWorkspaceConfiguration("vue")).toEqual(all.vue);
-    expect(adapter.getWorkspaceConfiguration("vue.format.template")).toEqual({
+    expect(all.vue.format.template).toEqual({
       enabled: true,
       initialIndent: false,
     });
-    expect(adapter.getWorkspaceConfiguration("typescript.preferences.quoteStyle")).toBe("single");
-    expect(adapter.getWorkspaceConfiguration("javascript")).toEqual(all.typescript);
-    expect(adapter.getWorkspaceConfiguration("editor")).toBeUndefined();
+    expect(all.typescript.preferences.quoteStyle).toBe("single");
+    expect(all.javascript).toEqual(all.typescript);
+    expect(adapter.getWorkspaceConfiguration).toBeUndefined();
   });
 
   it("maps Vue, embedded-language and TypeScript settings without flattening them", () => {

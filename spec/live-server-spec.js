@@ -304,10 +304,8 @@ describe("ide-vue bundled server", () => {
     client.notify("workspace/didChangeConfiguration", {
       settings: adapter.getSettings(),
     });
-    expect(adapter.getWorkspaceConfiguration("typescript.validate.enable")).toBe(false);
-    expect(adapter.getWorkspaceConfiguration("vue.suggest.componentNameCasing")).toBe(
-      "alwaysKebabCase",
-    );
+    expect(adapter.getSettings().typescript.validate.enable).toBe(false);
+    expect(adapter.getSettings().vue.suggest.componentNameCasing).toBe("alwaysKebabCase");
     client.change(uri, source, 3);
     expect(
       (await client.request("textDocument/diagnostic", { textDocument: { uri } })).items,
