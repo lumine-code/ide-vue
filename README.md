@@ -21,6 +21,10 @@ To install `ide-vue` search for it in the Install pane of the Lumine settings, o
 
 Install `ide-client` first.
 
+## Usage
+
+A managed server uses TypeScript and the Vue plugin from its own installation. A custom server uses the bundled compiler and plugin unless a TypeScript SDK path is configured; a damaged managed installation cannot change these companions.
+
 ## Services
 
 - `ide-client`: consumed to register the Vue adapter with the editor's language-server client.

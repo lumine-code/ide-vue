@@ -552,6 +552,32 @@ describe("ide-vue package assets", () => {
 });
 
 describe("ide-vue shared server resolution", () => {
+  it("uses the configured server without reading an invalid managed installation", async () => {
+    const getManagedServer = jasmine
+      .createSpy("getManagedServer")
+      .and.throwError("The managed installation is corrupt.");
+    const context = serverContext({ rootPath: __dirname, getManagedServer });
+    const { resolveServer: resolveWithContext } = require("../lib/server");
+    const launch = await resolveWithContext(context, process.execPath);
+    expect(launch.command).toBe(process.execPath);
+    expect(launch.version).toBeUndefined();
+    expect(getManagedServer).not.toHaveBeenCalled();
+    expect(launch.tsdk).toBe(bundledTsdk());
+    expect(launch.pluginProbeLocation).toBe(bundledPluginProbeLocation());
+  });
+
+  it("reports an invalid managed installation before considering the bundled server", async () => {
+    const getManagedServer = jasmine
+      .createSpy("getManagedServer")
+      .and.throwError("The managed installation is corrupt.");
+    const context = serverContext({ rootPath: __dirname, getManagedServer });
+    const { resolveServer: resolveWithContext } = require("../lib/server");
+    await expectAsync(resolveWithContext(context, "")).toBeRejectedWithError(
+      "The managed installation is corrupt.",
+    );
+    expect(getManagedServer).toHaveBeenCalledOnceWith();
+  });
+
   it("preserves an unavailable selection as null", async () => {
     const { resolveServer: resolveWithContext } = require("../lib/server");
     const resolver = { select: jasmine.createSpy("select").and.resolveTo(null) };
