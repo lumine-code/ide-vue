@@ -44,7 +44,7 @@ const registerAdapter = (overrides = {}) => {
     restart: async () => {},
     ...overrides,
   };
-  const disposable = main.consumeIdeClient(service);
+  const disposable = main.consumeIde(service);
   return { adapter, disposable, service };
 };
 

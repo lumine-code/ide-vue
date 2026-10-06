@@ -12,7 +12,7 @@ const {
 
 const registerAdapter = () => {
   let adapter;
-  const disposable = main.consumeIdeClient({
+  const disposable = main.consumeIde({
     registerAdapter(registered) {
       adapter = registered;
       return { dispose() {} };
@@ -192,7 +192,7 @@ describe("ide-vue bundled server", () => {
     const definition = await client.request("textDocument/definition", positionParams(uri, 22, 37));
     expect(definition.length).toBeGreaterThan(0);
     // CSS returns the richer LocationLink spelling while several other Vue
-    // providers use plain Location values; ide-client accepts both forms.
+    // providers use plain Location values; ide accepts both forms.
     expect(pathOf(definition[0].targetUri || definition[0].uri)).toBe(
       path.join(rootPath, "App.vue").toLowerCase(),
     );

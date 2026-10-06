@@ -2,7 +2,7 @@
 
 Vue language-server adapter.
 
-Registers the bundled Vue Language Server with `ide-client`, providing diagnostics, completion, navigation, symbols, formatting, refactoring, hints, and semantic highlighting across Vue single-file components.
+Registers the bundled Vue Language Server with `ide`, providing diagnostics, completion, navigation, symbols, formatting, refactoring, hints, and semantic highlighting across Vue single-file components.
 
 ## Features
 
@@ -19,7 +19,7 @@ Registers the bundled Vue Language Server with `ide-client`, providing diagnosti
 
 To install `ide-vue` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/ide-vue`.
 
-Install `ide-client` first.
+Install `ide` first.
 
 ## Usage
 
@@ -27,7 +27,7 @@ A managed server uses TypeScript and the Vue plugin from its own installation. A
 
 ## Services
 
-- `ide-client`: consumed to register the Vue adapter with the editor's language-server client.
+- `ide`: consumed to register the Vue adapter with the editor's language-server client.
 
 ## Contributing
 

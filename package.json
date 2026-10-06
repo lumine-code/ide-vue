@@ -26,7 +26,7 @@
     "spec"
   ],
   "specPackages": [
-    "ide-client"
+    "ide"
   ],
   "scripts": {
     "test": "lumine --test spec",
@@ -42,9 +42,9 @@
     }
   },
   "consumedServices": {
-    "ide-client": {
+    "ide": {
       "versions": {
-        "^1.0.0": "consumeIdeClient"
+        "^1.0.0": "consumeIde"
       }
     }
   },

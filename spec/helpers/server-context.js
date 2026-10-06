@@ -5,7 +5,7 @@ const path = require("path");
 const serverContext = (overrides = {}) => {
   const { managedServer = null, getManagedServer = () => managedServer, ...context } = overrides;
   const { createServerResolver } = require(
-    path.join(lumine.packages.resolvePackagePath("ide-client"), "lib", "server-resolver"),
+    path.join(lumine.packages.resolvePackagePath("ide"), "lib", "server-resolver"),
   );
   let read = false;
   let install;
