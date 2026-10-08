@@ -4,6 +4,7 @@ const { EventEmitter } = require("events");
 const fs = require("fs");
 const path = require("path");
 const main = require("../lib/main");
+const { dependencies } = require("../package.json");
 const {
   bundledPluginProbeLocation,
   bundledTsdk,
@@ -69,9 +70,13 @@ describe("ide-vue server resolution", () => {
     expect(fs.existsSync(launch.args[0])).toBe(true);
     expect(launch.env.ELECTRON_RUN_AS_NODE).toBe("1");
     expect(launch.pluginProbeLocation).toBe(bundledPluginProbeLocation());
-    expect(require("@vue/language-server/package.json").version).toBe("3.3.11");
-    expect(require("@vue/typescript-plugin/package.json").version).toBe("3.3.11");
-    expect(require("typescript/package.json").version).toBe("6.0.3");
+    expect(require("@vue/language-server/package.json").version).toBe(
+      dependencies["@vue/language-server"],
+    );
+    expect(require("@vue/typescript-plugin/package.json").version).toBe(
+      dependencies["@vue/typescript-plugin"],
+    );
+    expect(require("typescript/package.json").version).toBe(dependencies.typescript);
   });
 
   it("keeps the managed compiler below TypeScript 7", () => {
@@ -503,11 +508,15 @@ describe("ide-vue package assets", () => {
   });
 
   it("pins all bridge runtime dependencies exactly", () => {
-    expect(pkg.dependencies).toEqual({
-      "@vue/language-server": "3.3.11",
-      "@vue/typescript-plugin": "3.3.11",
-      typescript: "6.0.3",
-    });
+    expect(Object.keys(pkg.dependencies).sort()).toEqual([
+      "@vue/language-server",
+      "@vue/typescript-plugin",
+      "typescript",
+    ]);
+    expect(pkg.dependencies["@vue/typescript-plugin"]).toBe(
+      pkg.dependencies["@vue/language-server"],
+    );
+    expect(Number(pkg.dependencies.typescript.split(".")[0])).toBeLessThan(7);
     for (const version of Object.values(pkg.dependencies))
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });

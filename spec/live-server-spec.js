@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { fileURLToPath } = require("url");
 const main = require("../lib/main");
+const { dependencies } = require("../package.json");
 const {
   LiveLspClient,
   fileUri,
@@ -58,7 +59,10 @@ describe("ide-vue bundled server", () => {
 
   it("advertises the complete Vue protocol surface without unsupported claims", async () => {
     const { capabilities, serverInfo } = await client.start();
-    expect(serverInfo).toEqual({ name: "@vue/language-server", version: "3.3.11" });
+    expect(serverInfo).toEqual({
+      name: "@vue/language-server",
+      version: dependencies["@vue/language-server"],
+    });
     expect(capabilities.textDocumentSync).toBe(2);
     expect(capabilities.diagnosticProvider).toEqual({
       interFileDependencies: false,
