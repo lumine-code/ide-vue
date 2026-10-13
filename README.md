@@ -15,6 +15,8 @@ Registers the bundled Vue Language Server with `ide`, providing diagnostics, com
 - **Configuration**: controls component and prop casing, embedded formatting, automatic insertions, TypeScript imports, and Vue and TypeScript hints.
 - **Feature switches**: every advertised shared IDE capability can be handed to another server serving the same Vue file.
 
+![The Vue language server identifies an invalid CSS property inside a component.](.github/demo.png)
+
 ## Installation
 
 To install `ide-vue` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/ide-vue`.

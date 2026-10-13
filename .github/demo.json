@@ -1,0 +1,17 @@
+{
+  "title": "ide-vue",
+  "description": "The Vue language server identifies an invalid CSS property inside a component.",
+  "recordedOn": "2026-10-13",
+  "sourceRevision": "08f24ae70b292ebbb9ba224f4c68a60ffaf9605b",
+  "mode": "normal",
+  "fontSettings": "default",
+  "themeSourceRevision": "6564a9e21899b5541e9c8f8006f9be6d6d72e6ad",
+  "images": [
+    {
+      "file": "demo.png",
+      "label": "The Vue language server identifies an invalid CSS property inside a component.",
+      "width": 1100,
+      "height": 760
+    }
+  ]
+}
