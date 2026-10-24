@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { fileURLToPath } = require("url");
-const main = require("../lib/main");
+let main = require("../lib/main");
 const { dependencies } = require("../package.json");
 const {
   LiveLspClient,
@@ -42,7 +42,7 @@ describe("ide-vue bundled server", () => {
 
   beforeEach(async () => {
     jasmine.useRealClock();
-    await lumine.packages.activatePackage("ide-vue");
+    main = (await lumine.packages.activatePackage("ide-vue")).mainModule;
     ({ adapter, disposable } = registerAdapter());
     rootPath = path.join(__dirname, "fixtures", "drive");
     const filePath = path.join(rootPath, "App.vue");

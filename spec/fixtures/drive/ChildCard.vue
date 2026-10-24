@@ -1,5 +1,9 @@
 <script setup lang="ts">
-defineProps<{ title: string; count: number }>();
+defineProps<{
+  title: string;
+  /** Displayed count. */
+  count: number;
+}>();
 const emit = defineEmits<{ select: [step: number] }>();
 </script>
 

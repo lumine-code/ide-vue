@@ -3,12 +3,12 @@ const childProcess = require("child_process");
 const { EventEmitter } = require("events");
 const fs = require("fs");
 const path = require("path");
-const main = require("../lib/main");
+let main = require("../lib/main");
 const { dependencies } = require("../package.json");
 const {
   bundledPluginProbeLocation,
   bundledTsdk,
-  managedServer,
+  installServer,
   resolveServer: resolveServerWithContext,
 } = require("../lib/server");
 const resolveServer = (configuredPath, tsdk, managedServer = null) =>
@@ -18,7 +18,8 @@ const resolveServer = (configuredPath, tsdk, managedServer = null) =>
     tsdk,
   );
 
-const { TsServerBridge, endLocation, requestFile } = require("../lib/tsserver-bridge");
+let { TsServerBridge } = require("../lib/tsserver-bridge");
+const { endLocation, requestFile } = require("../lib/tsserver-bridge");
 
 const FEATURES = [
   "diagnostics",
@@ -76,14 +77,25 @@ describe("ide-vue server resolution", () => {
     expect(require("@vue/typescript-plugin/package.json").version).toBe(
       dependencies["@vue/typescript-plugin"],
     );
-    expect(require("typescript/package.json").version).toBe(dependencies.typescript);
+    expect(require("typescript-native-bridge/package.json").version).toBe(
+      dependencies["typescript-native-bridge"],
+    );
   });
 
-  it("keeps the managed compiler below TypeScript 7", () => {
-    expect(managedServer.packages).toEqual([
-      "@vue/language-server",
-      { name: "typescript", version: "^6.0.3" },
+  it("installs a matched Vue generation and the native TypeScript 7 bridge", async () => {
+    const api = {
+      setServerInstallationStatus: jasmine.createSpy("status"),
+      npmInstallPackage: jasmine.createSpy("install").and.resolveTo(),
+      npmPackageInstalledVersion: jasmine.createSpy("installed").and.returnValue("3.3.13"),
+    };
+    const signal = new AbortController().signal;
+    const result = await installServer({ storagePath: __dirname, version: "3.3.13", api, signal });
+    expect(api.npmInstallPackage.calls.allArgs()).toEqual([
+      ["typescript-native-bridge", dependencies["typescript-native-bridge"], __dirname, { signal }],
+      ["@vue/typescript-plugin", "3.3.13", __dirname, { signal }],
+      ["@vue/language-server", "3.3.13", __dirname, { signal }],
     ]);
+    expect(result.version).toBe("3.3.13");
   });
 
   it("rejects missing custom executables and TypeScript SDKs", async () => {
@@ -152,13 +164,25 @@ describe("ide-vue TypeScript bridge primitives", () => {
       const templateStart = text.indexOf("<template>") + "<template>".length;
       const componentStart = text.indexOf("<ChildCard") - templateStart;
       const props = await bridge.request("_vue:getComponentProps", [file, componentStart]);
-      expect(props.map(({ name }) => name)).toContain("count");
+      expect(props).toContain(
+        jasmine.objectContaining({ name: "count", description: "Displayed count." }),
+      );
+      expect(props.find(({ name }) => name === "count").optional).not.toBe(true);
+      expect(props.find(({ name }) => name === "ref_for")).toEqual(
+        jasmine.objectContaining({ optional: true, boolean: true }),
+      );
+      expect(bridge.stderr).toContain("TNB ACTIVE");
+      const diagnostics = await bridge.request("semanticDiagnosticsSync", { file });
+      expect(diagnostics.map(({ code }) => code)).toEqual(jasmine.arrayContaining([2322, 2345]));
       text = text.replace("const count = ref(1)", "const count = ref(2)");
       const updated = await bridge.request("_vue:getComponentNames", [file]);
       expect(updated).toContain("count");
       expect(bridge.openFiles.get(file)).toBe(text);
     } finally {
+      const child = bridge.child;
       await bridge.stop();
+      expect(child.exitCode).toBe(0);
+      expect(child.signalCode).toBeNull();
     }
   });
 
@@ -250,7 +274,8 @@ describe("ide-vue adapter", () => {
 
   beforeEach(async () => {
     lumine.config.unset("ide-vue.tsdk");
-    await lumine.packages.activatePackage("ide-vue");
+    main = (await lumine.packages.activatePackage("ide-vue")).mainModule;
+    ({ TsServerBridge } = require("../lib/tsserver-bridge"));
     ({ adapter, disposable } = registerAdapter());
   });
 
@@ -464,7 +489,7 @@ describe("ide-vue feature contracts", () => {
   const definitions = require("../package.json").configSchema.features.properties;
 
   beforeEach(async () => {
-    await lumine.packages.activatePackage("ide-vue");
+    main = (await lumine.packages.activatePackage("ide-vue")).mainModule;
   });
 
   afterEach(async () => {
@@ -511,14 +536,14 @@ describe("ide-vue package assets", () => {
     expect(Object.keys(pkg.dependencies).sort()).toEqual([
       "@vue/language-server",
       "@vue/typescript-plugin",
-      "typescript",
+      "typescript-native-bridge",
     ]);
     expect(pkg.dependencies["@vue/typescript-plugin"]).toBe(
       pkg.dependencies["@vue/language-server"],
     );
-    expect(Number(pkg.dependencies.typescript.split(".")[0])).toBeLessThan(7);
+    expect(pkg.dependencies["typescript-native-bridge"]).toMatch(/\.tsgo\.7\.0\.2$/);
     for (const version of Object.values(pkg.dependencies))
-      expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
   });
 
   it("matches Windows paths after the server canonicalizes the drive", () => {

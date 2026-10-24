@@ -8,7 +8,7 @@ Registers the bundled Vue Language Server with `ide`, providing diagnostics, com
 
 - **Bundled server**: pins `@vue/language-server` exactly, with optional custom server and TypeScript SDK paths.
 - **Managed upgrade**: installs a newer server from npm when you want one, and removing it returns to the bundled copy.
-- **Vue TypeScript bridge**: runs the matching `@vue/typescript-plugin` in a companion tsserver and answers the server's custom `tsserver/request` notifications, enabling project and component intelligence outside VS Code.
+- **Native TypeScript 7**: runs the upstream `typescript-native-bridge` and matching `@vue/typescript-plugin` in a companion process, answering the server's custom `tsserver/request` notifications for project and component intelligence.
 - **Whole-SFC intelligence**: serves Vue templates together with their TypeScript, JavaScript, HTML, CSS, SCSS, and Less blocks.
 - **Navigation and structure**: follows components, props, bindings, styles, and script symbols and supplies references and document symbols.
 - **Editing**: formats SFC blocks, renames symbols, offers fixes and refactorings, and supplies inlay hints.
@@ -25,7 +25,9 @@ Install `ide` first.
 
 ## Usage
 
-A managed server uses TypeScript and the Vue plugin from its own installation. A custom server uses the bundled compiler and plugin unless a TypeScript SDK path is configured; a damaged managed installation cannot change these companions.
+A managed server installs a matching Vue server and plugin together with the pinned TypeScript native bridge. A custom server uses the bundled SDK and plugin unless a TypeScript SDK path is configured. SDK paths must select `typescript-native-bridge` backed by TypeScript 7; the stock TypeScript 7 package provides no tsserver for Vue's companion protocol. Remove an older managed TypeScript 6 installation and install it again to migrate.
+
+The adapter handles a released-snapshot documentation error in bridge 19 by querying the current native checker for the same symbol's documentation and JSDoc tags. Other errors propagate normally, and native symbol identity, required props and boolean types remain intact. This integration uses the published upstream SDK without modifying its installed files.
 
 ## Services
 
