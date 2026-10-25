@@ -128,6 +128,8 @@ describe("ide-vue server resolution", () => {
 });
 
 describe("ide-vue TypeScript bridge primitives", () => {
+  beforeEach(() => jasmine.useRealClock());
+
   it("computes one-based tsserver end locations for every newline spelling", () => {
     expect(endLocation("one\ntwo")).toEqual({ line: 2, offset: 4 });
     expect(endLocation("one\r\ntwo\r\n")).toEqual({ line: 3, offset: 1 });
@@ -139,6 +141,19 @@ describe("ide-vue TypeScript bridge primitives", () => {
     expect(requestFile(["ChildCard.vue", true])).toBe("ChildCard.vue");
     expect(requestFile({ path: "App.vue" })).toBeNull();
     expect(requestFile()).toBeNull();
+  });
+
+  it("does not read disk or forward a bridge request for a suspended open document", async () => {
+    const bridge = new TsServerBridge({ textForFile: () => null });
+    const read = spyOn(fs, "readFileSync").and.callThrough();
+    spyOn(bridge, "write");
+    expect(await bridge.request("_vue:getComponentNames", ["suspended.vue"])).toBeNull();
+    expect(read).not.toHaveBeenCalled();
+    expect(bridge.write).not.toHaveBeenCalled();
+    bridge.openFiles.set("suspended.vue", "previous source");
+    await bridge.request("_vue:getComponentNames", ["suspended.vue"]);
+    expect(bridge.write).toHaveBeenCalledOnceWith("close", { file: "suspended.vue" }, false);
+    expect(bridge.openFiles.size).toBe(0);
   });
 
   it("opens, updates and forwards requests through one tsserver process", async () => {
