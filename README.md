@@ -29,6 +29,8 @@ A managed server installs a matching Vue server and plugin together with the pin
 
 The adapter handles a released-snapshot documentation error in bridge 19 by querying the current native checker for the same symbol's documentation and JSDoc tags. Other errors propagate normally, and native symbol identity, required props and boolean types remain intact. This integration uses the published upstream SDK without modifying its installed files.
 
+The companion TypeScript bridge has a separate document budget (`maxDocumentSize`, 32 Mi UTF-16 units by default and at most32 Mi), checked before editor or disk reads. Its retained open sources are limited to128 Mi units and4096 files; protocol frames are bounded at256 MiB with at most256 pending requests. JSON structure is limited to200000 values and64 nesting levels. Oversized or invalid input is refused as a complete operation, existing oversized document state is closed, and ordinary requests resume after shrinking the document. Disk reads use bounded incremental decoding and verify file identity; native server analysis still has its own cost.
+
 ## Services
 
 - `ide`: consumed to register the Vue adapter with the editor's language-server client.

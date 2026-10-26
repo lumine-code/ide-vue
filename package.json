@@ -478,6 +478,14 @@
           "default": true
         }
       }
+    },
+    "maxDocumentSize": {
+      "title": "Maximum bridge document size",
+      "description": "Maximum UTF-16 Mi units synchronized by the companion TypeScript bridge. Oversized documents are closed without sending truncated source.",
+      "type": "number",
+      "minimum": 0.0625,
+      "maximum": 32,
+      "default": 32
     }
   }
 }
