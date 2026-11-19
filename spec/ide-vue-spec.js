@@ -145,12 +145,13 @@ describe("ide-vue TypeScript bridge primitives", () => {
 
   it("does not read disk or forward a bridge request for a suspended open document", async () => {
     const bridge = new TsServerBridge({ textForFile: () => null });
-    const read = spyOn(fs, "readFileSync").and.callThrough();
+    const read = spyOn(fs.promises, "open").and.callThrough();
     spyOn(bridge, "write");
     expect(await bridge.request("_vue:getComponentNames", ["suspended.vue"])).toBeNull();
     expect(read).not.toHaveBeenCalled();
     expect(bridge.write).not.toHaveBeenCalled();
-    bridge.openFiles.set("suspended.vue", "previous source");
+    bridge.ensureOpen("suspended.vue", "previous source");
+    bridge.write.calls.reset();
     await bridge.request("_vue:getComponentNames", ["suspended.vue"]);
     expect(bridge.write).toHaveBeenCalledOnceWith("close", { file: "suspended.vue" }, false);
     expect(bridge.openFiles.size).toBe(0);
@@ -205,7 +206,7 @@ describe("ide-vue TypeScript bridge primitives", () => {
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
-    child.stdin = { write: jasmine.createSpy("write") };
+    child.stdin = Object.assign(new EventEmitter(), { write: jasmine.createSpy("write") });
     child.kill = jasmine.createSpy("kill").and.callFake((signal) => {
       expect(signal).toBe("SIGKILL");
       queueMicrotask(() => child.emit("exit", null, signal));
@@ -246,7 +247,7 @@ describe("ide-vue TypeScript bridge primitives", () => {
     await first;
     expect(child.kill).toHaveBeenCalledTimes(1);
     expect(timers.clearTimeout).toHaveBeenCalledOnceWith(timer);
-    expect(() => bridge.request("_vue:projectInfo", {})).toThrowError(
+    await expectAsync(bridge.request("_vue:projectInfo", {})).toBeRejectedWithError(
       "Vue tsserver bridge is stopped",
     );
   });
@@ -255,7 +256,7 @@ describe("ide-vue TypeScript bridge primitives", () => {
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
-    child.stdin = { write() {} };
+    child.stdin = Object.assign(new EventEmitter(), { write() {} });
     child.kill = jasmine.createSpy("kill").and.returnValue(false);
     spyOn(childProcess, "spawn").and.returnValue(child);
     let forceStop;
@@ -568,13 +569,6 @@ describe("ide-vue package assets", () => {
     expect(main.pathKey("/Project/App.vue", "linux")).not.toBe(
       main.pathKey("/Project/app.vue", "linux"),
     );
-    spyOn(lumine.workspace, "getTextEditors").and.returnValue([
-      {
-        getPath: () => "C:\\Project\\App.vue",
-        getText: () => "unsaved Vue source",
-      },
-    ]);
-    expect(main.textForOpenFile("c:/Project/App.vue", "win32")).toBe("unsaved Vue source");
   });
 
   it("declares every setting read by the adapter", () => {

@@ -24,22 +24,23 @@ describe("Vue bridge document and transport budgets", () => {
       getBuffer: () => ({ getLength: () => 600000000 }),
       getText: jasmine.createSpy("giant text").and.throwError("must not read"),
     };
-    spyOn(lumine.workspace, "getTextEditors").and.returnValue([editor]);
-    expect(() => main.textForOpenFile("sibling.ts")).toThrowError(/synchronization budget/);
+    expect(() => main.textForEditors(new Set([editor]))).toThrowError(/synchronization budget/);
     expect(editor.getText).not.toHaveBeenCalled();
   });
 
-  it("retires previously synchronized source after eligibility loss and recovers", () => {
+  it("retires previously synchronized source after eligibility loss and recovers", async () => {
     let source = "before";
     const bridge = new TsServerBridge({ textForFile: () => Budget.assertText(source) });
     spyOn(bridge, "write");
-    bridge.ensureOpen("sibling.ts");
+    await bridge.request("query", { file: "sibling.ts" });
     source = "x".repeat(65537);
-    expect(() => bridge.ensureOpen("sibling.ts")).toThrowError(/synchronization budget/);
+    await expectAsync(bridge.request("query", { file: "sibling.ts" })).toBeRejectedWithError(
+      /synchronization budget/,
+    );
     expect(bridge.openFiles.size).toBe(0);
     expect(bridge.write).toHaveBeenCalledWith("close", { file: "sibling.ts" }, false);
     source = "after";
-    bridge.ensureOpen("sibling.ts");
+    await bridge.request("query", { file: "sibling.ts" });
     expect(bridge.openFiles.get("sibling.ts")).toBe("after");
   });
 
@@ -51,9 +52,9 @@ describe("Vue bridge document and transport budgets", () => {
     spyOn(editor, "getGrammar").and.returnValue({ scopeName: "text.html.vue" });
     let adapter, bridge;
     const original = TsServerBridge.prototype.ensureOpen;
-    spyOn(TsServerBridge.prototype, "ensureOpen").and.callFake(function (name) {
+    spyOn(TsServerBridge.prototype, "ensureOpen").and.callFake(function (name, text) {
       bridge = this;
-      return original.call(this, name);
+      return original.call(this, name, text);
     });
     spyOn(TsServerBridge.prototype, "write");
     const subscription = main.consumeIde({
@@ -80,34 +81,132 @@ describe("Vue bridge document and transport budgets", () => {
     }
   });
 
-  it("decodes bounded disk chunks exactly and rejects sparse oversized input before reading", () => {
+  it("releases the bridge source on rename and on the last split closing", async () => {
+    const { Disposable } = require("lumine");
+    const file = path.join(directory, "live.vue");
+    const renamed = path.join(directory, "renamed.vue");
+    fs.writeFileSync(file, "content");
+    const first = await lumine.workspace.open(file);
+    const second = first.copy();
+    lumine.workspace.getActivePane().splitRight({ items: [second] });
+    for (const editor of [first, second])
+      spyOn(editor, "getGrammar").and.returnValue({ scopeName: "text.html.vue" });
+    let adapter, bridge;
+    const write = spyOn(TsServerBridge.prototype, "write").and.callFake(function () {
+      bridge = this;
+    });
+    const subscription = main.consumeIde({
+      registerAdapter(value) {
+        adapter = value;
+        return new Disposable();
+      },
+    });
+    const session = { state: "running", launch: {}, notify() {} };
+    const request = (file) =>
+      adapter.handleServerNotification("tsserver/request", [1, "query", { file }], { session });
+    try {
+      await request(file);
+      expect(bridge.openFiles.get(file)).toBe("content");
+      first.destroy();
+      expect(bridge.openFiles.has(file)).toBeTrue();
+      second.getBuffer().setPath(renamed);
+      expect(write).toHaveBeenCalledWith("close", { file }, false);
+      expect(bridge.openFiles.has(file)).toBeFalse();
+      await request(renamed);
+      expect(bridge.openFiles.get(renamed)).toBe("content");
+      second.destroy();
+      expect(write).toHaveBeenCalledWith("close", { file: renamed }, false);
+      expect(bridge.retainedUnits).toBe(0);
+    } finally {
+      subscription.dispose();
+      first.destroy();
+      second.destroy();
+    }
+  });
+
+  it("decodes bounded disk chunks exactly and rejects sparse oversized input before reading", async () => {
     const file = path.join(directory, "source.ts");
     const source = "ą😀".repeat(20000);
     fs.writeFileSync(file, source);
-    expect(Budget.readText(file)).toBe(source);
+    expect(await Budget.readText(file)).toBe(source);
     const fd = fs.openSync(file, "w");
     fs.ftruncateSync(fd, 600000000);
     fs.closeSync(fd);
-    const read = spyOn(fs, "readSync").and.throwError("must not read sparse input");
-    expect(() => Budget.readText(file)).toThrowError(/synchronization budget/);
+    const original = fs.promises.open;
+    const read = jasmine.createSpy("must not read sparse input").and.throwError("unexpected read");
+    spyOn(fs.promises, "open").and.callFake(async (...args) => {
+      const handle = await original(...args);
+      spyOn(handle, "read").and.callFake(read);
+      return handle;
+    });
+    await expectAsync(Budget.readText(file)).toBeRejectedWithError(/synchronization budget/);
     expect(read).not.toHaveBeenCalled();
   });
 
-  it("rejects growth during bounded decoding and closes the descriptor", () => {
+  it("rejects growth during bounded decoding and closes the descriptor", async () => {
     const file = path.join(directory, "growing.ts");
     fs.writeFileSync(file, "x");
-    const original = fs.readSync;
-    let grown = false;
-    spyOn(fs, "readSync").and.callFake((...args) => {
-      if (!grown) {
-        grown = true;
-        fs.appendFileSync(file, "a".repeat(65537));
-      }
-      return original(...args);
+    const original = fs.promises.open;
+    let close;
+    spyOn(fs.promises, "open").and.callFake(async (...args) => {
+      const handle = await original(...args);
+      const read = handle.read.bind(handle);
+      let grown = false;
+      spyOn(handle, "read").and.callFake(async (...readArgs) => {
+        if (!grown) {
+          grown = true;
+          await fs.promises.appendFile(file, "a".repeat(65537));
+        }
+        return read(...readArgs);
+      });
+      close = spyOn(handle, "close").and.callThrough();
+      return handle;
     });
-    const close = spyOn(fs, "closeSync").and.callThrough();
-    expect(() => Budget.readText(file)).toThrowError(/synchronization budget/);
+    await expectAsync(Budget.readText(file)).toBeRejectedWithError(/synchronization budget/);
     expect(close).toHaveBeenCalled();
+  });
+
+  it("shares concurrent disk reads and closes the source after the last request", async () => {
+    const file = path.join(directory, "source.ts");
+    fs.writeFileSync(file, "source");
+    const read = spyOn(Budget, "readText").and.callThrough();
+    const bridge = new TsServerBridge({ textForFile: () => undefined });
+    const write = spyOn(bridge, "write").and.resolveTo("result");
+    const results = await Promise.all([
+      bridge.request("first", { file }),
+      bridge.request("second", { file }),
+    ]);
+    expect(results).toEqual(["result", "result"]);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(write.calls.allArgs().map(([command]) => command)).toEqual([
+      "open",
+      "first",
+      "second",
+      "close",
+    ]);
+    expect(bridge.openFiles.size).toBe(0);
+  });
+
+  it("cannot open a disk snapshot after its bridge source was suspended", async () => {
+    let finishRead;
+    const read = spyOn(Budget, "readText").and.callFake(
+      () =>
+        new Promise((resolve) => {
+          finishRead = resolve;
+        }),
+    );
+    const bridge = new TsServerBridge({ textForFile: () => undefined });
+    const write = spyOn(bridge, "write");
+    const request = bridge.request("query", { file: "removed.vue" });
+    const rejection = expectAsync(request).toBeRejectedWith(
+      jasmine.objectContaining({ name: "AbortError" }),
+    );
+    await Promise.resolve();
+    bridge.suspendFile("removed.vue");
+    expect(read.calls.mostRecent().args[1].aborted).toBeTrue();
+    finishRead("old text");
+    await rejection;
+    expect(write).not.toHaveBeenCalled();
   });
 
   it("preflights dense protocol structures before spawning or recording requests", () => {
@@ -125,7 +224,8 @@ describe("Vue bridge document and transport budgets", () => {
     const child = bridge.child;
     const reject = jasmine.createSpy("reject");
     bridge.pending.set(1, { reject, timer: setTimeout(() => {}, 1000) });
-    bridge.openFiles.set("sibling.ts", "prior");
+    spyOn(bridge, "write");
+    bridge.ensureOpen("sibling.ts", "prior");
     bridge.receive(Buffer.from(`Content-Length: ${Budget.FRAME_LIMIT + 1}\r\n\r\n`));
     expect(reject).toHaveBeenCalled();
     expect(child.kill).toHaveBeenCalledWith("SIGKILL");
