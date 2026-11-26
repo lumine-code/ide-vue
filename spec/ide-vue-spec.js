@@ -419,7 +419,9 @@ describe("ide-vue adapter", () => {
       ["tsserver/response", [2, null]],
     ]);
     expect(lumine.notifications.addError).toHaveBeenCalledTimes(1);
-    expect(lumine.notifications.addError.calls.first().args[1].detail).toContain("bridge exploded");
+    const options = lumine.notifications.addError.calls.first().args[1];
+    expect(options.detail).toBe("bridge exploded");
+    expect(options.stack.includes("Error: bridge exploded")).toBe(true);
   });
 
   it("stops companion processes with their sessions", async () => {
