@@ -217,7 +217,7 @@ describe("ide-vue TypeScript bridge primitives", () => {
     const timer = { unref: jasmine.createSpy("unref") };
     const timers = {
       setTimeout(callback, delay) {
-        expect(delay).toBe(1000);
+        expect(delay).toBe(process.platform === "win32" ? 2000 : 1000);
         forceStop = callback;
         return timer;
       },
